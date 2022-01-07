@@ -659,21 +659,28 @@ ntempgraph
 ################################################################################################
 # scatter plot of daily means by pipe position 
 ################################################################################################
+# From Fig. 6
+# daily_means_position <- Temp_merge %>%
+#   dplyr::group_by(Pipe_position, Tide_ht, Date) %>%
+#   dplyr::mutate(Tide_ht = as.factor(Tide_ht)) %>% 
+#   dplyr::summarise(n = n(),
+#             Temp_C = mean(Temp_C),
+#             sd = sd(Temp_C),
+#             se = sd/sqrt(n))
 
-daily_means %>% 
-  group_by(Tide_AMSL_m, Pipe_position) %>% 
-  get_summary_stats(mean, type = "mean_sd")
+daily_means_position %>% 
+  get_summary_stats(Temp_C, type = "mean_sd")
 
 pd <- position_dodge(0.15)
 
-daily_means %>%
- ggplot(aes(x = Date, 
-            y = mean, 
-            color = Tide_AMSL_m)) +
+daily_means_position %>%
+ ggplot(aes(x = as.Date(Date, format = "%Y-%m-%d"), 
+            y = Temp_C, 
+            color = Tide_ht)) +
  geom_point(position = pd, 
              size = 5) +
-  geom_errorbar(aes(ymin = mean - se, 
-                    ymax = mean + se),
+  geom_errorbar(aes(ymin = Temp_C - se, 
+                    ymax = Temp_C + se),
                 width = .1, 
                 position = pd) +
           theme_classic() +
@@ -681,7 +688,7 @@ daily_means %>%
           theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
           labs(x = "Date", 
                y = "Mean daily temperature (°C)") +
-    scale_x_date(date_breaks = "7 days", date_labels = "%m-%d") +
+    scale_x_date(date_breaks = "7 days", date_labels = "%Y-%m-%d") +
     scale_color_manual(name = "Height above MSL (m)", values = c("#08306B", "#2171B5", "#6BAED6"))
 
 ################################################################################################
@@ -689,24 +696,25 @@ daily_means %>%
 ################################################################################################
 # Method 1: http://www.sthda.com/english/wiki/ggplot2-facet-split-a-plot-into-a-matrix-of-panels
 
-temp_box <- ggplot(daily_means, 
-       aes (x = Tide_AMSL_m, 
-            y = mean, 
-            group = Tide_AMSL_m)) +
+temp_box <- ggplot(daily_means_position, 
+       aes (x = Tide_ht, 
+            y = Temp_C, 
+            group = Tide_ht)) +
   geom_boxplot()+
   theme_classic() +
   theme(text = element_text(size = 15)) +
   theme(legend.position = "none") +
   labs(x = "Approx. Elevation Above Mean Seal Level (AMSL)", 
        y = "Daily Mean Temperatures (°C)")
+temp_box
 # 
 # temp_box + scale_fill_manual(values=c("#08306B", "#2171B5", "#6BAED6"), 
 #                        name="Height AMSL (m)")
 
 #Method 2: https://rpkgs.datanovia.com/ggpubr/reference/ggboxplot.html
 temp_boxplot <- ggboxplot(
-  daily_means, x = "Tide_AMSL_m", y = "mean", 
-  color = "Tide_AMSL_m", palette = c("#08306B", "#2171B5", "#6BAED6"),
+  daily_means_position, x = "Tide_ht", y = "Temp_C", 
+  color = "Tide_ht", palette = c("#08306B", "#2171B5", "#6BAED6"),
   xlab = "Tide Height AMSL (m)",
   ylab = "Mean daily temperature (°C)",
   #title = "Mean daily temperatures within marsh organ"
@@ -718,15 +726,15 @@ temp_boxplot
 ################################################
 
 fullrange <- Temp_merge %>%
-  group_by(Tide_AMSL_m, Date)%>%
+  group_by(Tide_ht, Date)%>%
   summarise(min_temp = min(Temp_C), max_temp = max(Temp_C))%>%
   mutate(range = max_temp-min_temp)
 
 plot_range <- ggplot(data=fullrange, 
                    aes(x=as.Date(Date, format = "%Y-%m-%d"), 
-                       y=range, colour = Tide_AMSL_m)) +
+                       y=range, colour = Tide_ht)) +
   geom_smooth(size = 1.5)+ theme_classic(base_size = 14)+
-  #facet_grid(fct_relevel(Tide_AMSL_m, "1.7", "1.1", "0.5"))+ 
+  #facet_grid(fct_relevel(Tide_ht, "1.7", "1.1", "0.5"))+ 
   theme(panel.spacing.y = unit(1.25, "lines")) +
   theme(axis.text.x = element_text(margin = margin(t=5), angle = 30), axis.text.y = element_text(size = 14))+
   labs(y="Range of daily mean temperatures (°C)", x="Date") +
@@ -737,16 +745,13 @@ plot_range
 
 ```{r GC water office tide data}
 
-install.packages("stringr")
+#install.packages("stringr")
 library(stringr)
 
 # filter data between Apr. 1 and Aug. 31 (growing season)
 Steveston <- read.csv("2018_Steveston_GC_wateroffice.csv") %>% 
   mutate(Metres = as.numeric(Metres)) %>% 
   filter(Julian_Day >= 91, Julian_Day <= 304) 
-
-tides <- 
-
 
 MHW <- na.omit(Steveston) %>% 
   filter(Maxima == "H" | Maxima == "HH")
