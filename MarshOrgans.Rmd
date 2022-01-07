@@ -1,0 +1,928 @@
+---
+title: "MarshOrgan_Germination"
+output: html_document
+---
+```{r setup, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(tidyverse)
+library(RColorBrewer)
+library(ggpubr) # for creating easily publication ready plots; used in ANCOVA code from DataNovia tutorial
+library(rstatix) # provides pipe-friendly R functions for easy statistical analyses; used in ANCOVA code from DataNovia tutorial
+
+MO <- read.csv("Germination_2020-2021.csv")
+
+MO$Tide_ht <- factor(MO$Tide_ht, levels = c("L", "ML", "M", "MH", "H"))
+
+```
+
+``` {r Fig. 4}
+
+head(MO)
+obs_dates_all_germ <- filter(MO, (Date_obs == "20-Jul-20" | Date_obs == "20-Aug-20" | Date_obs == "12-May-21"))
+
+
+obs_germ_all_sp <- filter(obs_dates_all_germ, (Species == "CALY" | Species == "SCTA2" | Species == "TYLA" | Species == "JUEF"))
+
+
+obs_germ_all_sp %>%
+  group_by(Tide_ht, Species, Date_obs) %>%
+  summarise(
+  count = n(),
+mean = mean(pct_germ, na.rm = TRUE),
+sd = sd(pct_germ, na.rm = TRUE)
+)
+
+
+MOmeans_all_obs <- obs_germ_all_sp %>% 
+  mutate(Species = recode(Species, "CALY" = "Lyngbye's Sedge", "SCTA2" = "Bulrush", "TYLA" = "Cattail", "JUEF" = "Common Rush")) %>% 
+  group_by(Date_obs, Species, Tide_AMSL_m) %>% 
+  summarize(n = n(),
+            mean = mean(pct_germ), 
+            sd = sd(pct_germ), 
+            se = sd/sqrt(n))#,
+            #ci = qt(0.975, df = n-1) * sd/sqrt(n))
+
+
+pd <- position_dodge(0.15)
+# dates are displayed alphabetically; explicitly specify the order of factor levels; see https://rstudio-pubs-static.s3.amazonaws.com/7433_4537ea5073dc4162950abb715f513469.html
+MOmeans_all_obs$Date_obs <- factor(MOmeans_all_obs$Date_obs, levels = c("20-Jul-20", "20-Aug-20", "12-May-21"))
+
+ggplot(MOmeans_all_obs, 
+       aes (x = Tide_AMSL_m, 
+            y = mean, 
+            color = Date_obs, 
+            shape = Date_obs)) +
+  geom_point(position = pd, 
+             size = 5) +
+  geom_errorbar(aes(ymin = mean - se, 
+                    ymax = mean + se),
+                width = .1, 
+                position = pd) +
+        facet_grid(. ~ Tide_AMSL_m) +
+          theme_classic() +
+          theme(panel.spacing.y = unit(3, "lines"), panel.spacing.x = unit(3, "lines")) +
+          theme(text = element_text(size = 10)) +
+           facet_wrap(~ Species, nrow = 2, scales ="free") +
+          labs(x = "Approx. elevation above mean sea level (MSL)", 
+               y = "Percent Germination", 
+                color = "Observation Date",
+                shape = "Observation Date") +
+               #title = "Summer 2020: germination rates of 
+               #four plant species at five elevations AMSL", 
+               #subtitle = "(Means and standard errors)") +
+  #scale_shape_discrete(name = "Observation Date", limits = c("20-Jul-2020", "20-Aug-2020")) +
+          scale_color_manual(values = c("#74C476" , "#238B45", "#00441B"))
+ggsave("Figure_4.tiff", dpi = 300)
+
+
+```
+Figure 4. Germination rates of four plant species at five approximate elevations above MSL following artificial chilling (July and August, 2020) and natural chilling (May, 2021). The same individuals from 20 seeds planted in June 2020 were counted in July and August, 2020. Newly planted seeds in the fall of 2020 were observed in May 2021. Points are means ±S.E.; note y-axis showing percent germination is rescaled for each species. Species observed are Bulrush (Schoenoplectus tabernaemontani), Cattail (Typha latifolia), Common Rush (Juncus effusus), and Lyngbye’s Sedge (Carex lyngbyei). N = 4
+
+
+``` {r Fig. 5}
+
+obs_comp <- filter(MO, (Species == "CALY" | Species == "SCTA2"), (Date_obs == "30-Jun-21" | Date_obs == "26-Jul-21"))
+
+#Set factor levels to specify display order
+obs_comp$Date_obs <- factor(obs_comp$Date_obs, levels = c("30-Jun-21", "26-Jul-21"))
+
+
+obs_comp %>%
+  group_by(Tide_ht, Facilitation) %>%
+  summarise(
+  count = n(),
+mean = mean(pct_germ, na.rm = TRUE),
+sd = sd(pct_germ, na.rm = TRUE)
+)
+
+
+facil_means <- obs_comp %>% 
+  group_by(Date_obs, Facilitation, Tide_AMSL_m) %>% 
+  summarize(n = n(),
+            mean = mean(pct_germ), 
+            sd = sd(pct_germ), 
+            se = sd/sqrt(n))#,
+            #ci = qt(0.975, df = n-1) * sd/sqrt(n))
+
+
+pd <- position_dodge(0.15)
+
+#Bulrush germination under three different competitive environments
+ggplot(facil_means, 
+       aes (x = Tide_AMSL_m, 
+            y = mean, 
+            color = Date_obs, 
+            shape = Date_obs)) +
+  geom_point(position = pd, 
+             size = 5) +
+  geom_errorbar(aes(ymin = mean - se, 
+                    ymax = mean + se),
+                width = .1, 
+                position = pd) +
+        theme(legend.position = "none") +
+        facet_grid(. ~ Facilitation) +
+          theme_classic() +
+          theme(text = element_text(size = 10)) +
+          theme(panel.spacing.x=unit(1.5, "lines")) +
+          labs(x = "Approx. elevation above mean sea level (MSL)", 
+               y = "Percent Germination", 
+               color = "Observation Date",
+                shape = "Observation Date") +
+  scale_color_brewer(palette = "Paired")
+ggsave("Figure_5.tiff", dpi = 300)
+
+```
+Figure 5. Germination rates of bulrush at five approximate elevations above MSL under three different competitive pressures. Seeds exposed to 8-week artificial chilling were planted in mid-May 2021 and the same individuals were observed late June and late July 2021. Points are means ±S.E., N = 4.
+
+
+ANOVA - GERMINATION 
+
+Seeds exposed to artificial chilling were planted in May 2020, and observed in July and August 2020. 
+Seeds planted in August 2020 underwent natural overwinter chilling, and germination was assessed in May 2021. 
+One-way ANOVA is used to determine whether there are any significant germination differences for each species across tide heights. 
+Post-hoc Tukey tests are run to determine which tide height(s) have the most significant germination rates. 
+``` {r July 2020 ANOVA, untransformed}
+# spoiler: no significant differences
+
+# see https://www.datanovia.com/en/lessons/anova-in-r/#computation
+
+# filter species
+Jul20_CALY <- filter(MO, Species == "CALY", Date_obs == "20-Jul-20") 
+Jul20_SCTA2 <- filter(MO, Species == "SCTA2", Date_obs == "20-Jul-20") 
+Jul20_JUEF <- filter(MO, Species == "JUEF", Date_obs == "20-Jul-20")
+Jul20_TYLA <- filter(MO, Species == "TYLA", Date_obs == "20-Jul-20") 
+
+############################################################################
+#Check assumptions of ANOVA 
+############################################################################
+
+# Build the linear model
+lm_Jul20_CALY  <- lm(pct_germ ~ Tide_ht, data = Jul20_CALY)
+lm_Jul20_SCTA2 <- lm(pct_germ ~ Tide_ht, data = Jul20_SCTA2)
+lm_Jul20_JUEF <- lm(pct_germ ~ Tide_ht, data = Jul20_JUEF)
+lm_Jul20_TYLA <- lm(pct_germ ~ Tide_ht, data = Jul20_TYLA)
+
+# Create a QQ plot of residuals (useful bc there are several groups (Tide_ht) but few data points (n = 4) per group)
+ggqqplot(residuals(lm_Jul20_CALY))
+ggqqplot(residuals(lm_Jul20_SCTA2))
+ggqqplot(residuals(lm_Jul20_JUEF))
+ggqqplot(residuals(lm_Jul20_TYLA))
+#points essentially fall approximately along the reference line, so we can assume normal distribution
+
+# check homogeneity of variance assumption with residuals vs. fit plot
+plot(lm_Jul20_CALY, 1)
+plot(lm_Jul20_SCTA2, 1)
+plot(lm_Jul20_JUEF, 1) #this species might not have homogeneous variance - linear relationship between residuals & fitted values
+plot(lm_Jul20_TYLA, 1)
+
+# use the Levene’s test to check the homogeneity of variances:
+Jul20_CALY %>% levene_test(pct_germ ~ Tide_ht)
+Jul20_SCTA2 %>% levene_test(pct_germ ~ Tide_ht)
+Jul20_JUEF %>% levene_test(pct_germ ~ Tide_ht)
+Jul20_TYLA %>% levene_test(pct_germ ~ Tide_ht)
+# all p values > 0.05, there is not significant difference between variances across groups. Therefore, we can assume the homogeneity of variances in the different treatment groups.
+
+############################################################################
+# Computation
+############################################################################
+
+res.aov_CALY_Jul20 <- Jul20_CALY %>% anova_test(pct_germ ~ Tide_ht)
+res.aov_CALY_Jul20
+
+res.aov_SCTA2_Jul20 <- Jul20_SCTA2 %>% anova_test(pct_germ ~ Tide_ht)
+res.aov_SCTA2_Jul20
+
+res.aov_JUEF_Jul20 <- Jul20_JUEF %>% anova_test(pct_germ ~ Tide_ht)
+res.aov_JUEF_Jul20
+
+res.aov_TYLA_Jul20 <- Jul20_TYLA %>% anova_test(pct_germ ~ Tide_ht)
+res.aov_TYLA_Jul20
+
+```
+
+``` {r July 2020 ANOVA, sqrt transformed}
+
+# see https://www.datanovia.com/en/lessons/anova-in-r/#computation
+# for explanation of transformations, review first 4 pgs of https://www.ndsu.edu/faculty/horsley/Transfrm.pdf
+
+# sqrt transform & add to df
+Jul20_CALY_sqrt = sqrt(Jul20_CALY$pct_germ) 
+Jul20_SCTA2_sqrt =  sqrt(Jul20_SCTA2$pct_germ) 
+Jul20_JUEF_sqrt = sqrt(Jul20_JUEF$pct_germ)
+Jul20_TYLA_sqrt = sqrt(Jul20_TYLA$pct_germ)
+
+
+Jul20_CALY_xform <- mutate(Jul20_CALY, pct_germ = Jul20_CALY_sqrt)
+Jul20_SCTA2_xform <- mutate(Jul20_SCTA2, pct_germ = Jul20_SCTA2_sqrt)
+Jul20_JUEF_xform <- mutate(Jul20_JUEF, pct_germ = Jul20_JUEF_sqrt)
+Jul20_TYLA_xform <- mutate(Jul20_TYLA, pct_germ = Jul20_TYLA_sqrt)
+
+
+############################################################################
+#Check assumptions of ANOVA 
+############################################################################
+
+# Build the linear model
+lm_Jul20_CALY_xform  <- lm(pct_germ ~ Tide_ht, data = Jul20_CALY_xform)
+lm_Jul20_SCTA2_xform <- lm(pct_germ ~ Tide_ht, data = Jul20_SCTA2_xform)
+lm_Jul20_JUEF_xform <- lm(pct_germ ~ Tide_ht, data = Jul20_JUEF_xform)
+lm_Jul20_TYLA_xform <- lm(pct_germ ~ Tide_ht, data = Jul20_TYLA_xform)
+
+# Create a QQ plot of residuals (useful bc there are several groups (Tide_ht) but few data points (n = 4) per group)
+ggqqplot(residuals(lm_Jul20_CALY_xform))
+ggqqplot(residuals(lm_Jul20_SCTA2_xform))
+ggqqplot(residuals(lm_Jul20_JUEF_xform)) #doesn't look normal
+ggqqplot(residuals(lm_Jul20_TYLA_xform))
+#except for JUEF, points essentially fall approximately along the reference line, so we can assume normal distribution
+
+# check homogeneity of variance assumption with residuals vs. fit plot
+plot(lm_Jul20_CALY_xform, 1)
+plot(lm_Jul20_SCTA2_xform, 1)
+plot(lm_Jul20_JUEF_xform, 1) #this species might not have homogeneous variance - linear relationship between residuals & fitted values
+plot(lm_Jul20_TYLA_xform, 1)
+
+# use the Levene’s test to check the homogeneity of variances:
+Jul20_CALY_xform %>% levene_test(pct_germ ~ Tide_ht)
+Jul20_SCTA2_xform %>% levene_test(pct_germ ~ Tide_ht)
+Jul20_JUEF_xform %>% levene_test(pct_germ ~ Tide_ht)
+Jul20_TYLA_xform %>% levene_test(pct_germ ~ Tide_ht)
+# all p values > 0.05, there is not significant difference between variances across groups. Therefore, we can assume the homogeneity of variances in the different treatment groups.
+
+############################################################################
+# Computation
+############################################################################
+
+res.aov_CALY_Jul20_xform <- Jul20_CALY_xform %>% anova_test(pct_germ ~ Tide_ht)
+res.aov_CALY_Jul20_xform
+
+res.aov_SCTA2_Jul20_xform <- Jul20_SCTA2_xform %>% anova_test(pct_germ ~ Tide_ht)
+res.aov_SCTA2_Jul20_xform
+
+res.aov_JUEF_Jul20_xform <- Jul20_JUEF_xform %>% anova_test(pct_germ ~ Tide_ht)
+res.aov_JUEF_Jul20_xform
+
+res.aov_TYLA_Jul20_xform <- Jul20_TYLA_xform %>% anova_test(pct_germ ~ Tide_ht)
+res.aov_TYLA_Jul20_xform
+
+# no sig differences
+
+
+```
+
+```{r August 2020 ANOVA}
+# filter species
+Aug20_CALY <- filter(MO, Species == "CALY", Date_obs == "20-Aug-20") 
+Aug20_SCTA2 <- filter(MO, Species == "SCTA2", Date_obs == "20-Aug-20") 
+Aug20_JUEF <- filter(MO, Species == "JUEF", Date_obs == "20-Aug-20")
+Aug20_TYLA <- filter(MO, Species == "TYLA", Date_obs == "20-Aug-20") 
+
+#sqrt transform & add to df
+Aug20_CALY_sqrt = sqrt(Aug20_CALY$pct_germ)
+
+Aug20_CALY_xform <- mutate(Aug20_CALY, pct_germ = Aug20_CALY_sqrt)
+
+
+
+############################################################################
+#Check assumptions of ANOVA 
+############################################################################
+
+# Build the linear model
+lm_Aug20_CALY  <- lm(pct_germ ~ Tide_ht, data = Aug20_CALY)
+lm_Aug20_SCTA2 <- lm(pct_germ ~ Tide_ht, data = Aug20_SCTA2)
+lm_Aug20_JUEF <- lm(pct_germ ~ Tide_ht, data = Aug20_JUEF)
+lm_Aug20_TYLA <- lm(pct_germ ~ Tide_ht, data = Aug20_TYLA)
+
+#lm sqrt
+lm_Aug20_CALY_xform <- lm(pct_germ ~ Tide_ht, data = Aug20_CALY_xform) 
+  
+
+
+# Create a QQ plot of residuals (useful bc there are several groups (Tide_ht) but few data points (n = 4) per group)
+ggqqplot(residuals(lm_Aug20_CALY))
+ggqqplot(residuals(lm_Aug20_CALY_xform))
+
+ggqqplot(residuals(lm_Aug20_SCTA2))
+ggqqplot(residuals(lm_Aug20_JUEF))
+ggqqplot(residuals(lm_Aug20_TYLA))
+#points essentially fall approximately along the reference line, so we can assume normal distribution
+
+# check homogeneity of variance assumption with residuals vs. fit plot
+plot(lm_Aug20_CALY, 1)
+plot(lm_Aug20_CALY_xform, 1)
+plot(lm_Aug20_SCTA2, 1)
+plot(lm_Aug20_JUEF, 1) 
+plot(lm_Aug20_TYLA, 1)
+
+# use the Levene’s test to check the homogeneity of variances:
+Aug20_CALY %>% levene_test(pct_germ ~ Tide_ht) # p value << 0.05, unequal variance across groups. Can try transforming the data. 
+Aug20_CALY_xform %>% levene_test(pct_germ ~ Tide_ht) # p > 0.05, homogeneous variance ok! 
+Aug20_SCTA2 %>% levene_test(pct_germ ~ Tide_ht)
+Aug20_JUEF %>% levene_test(pct_germ ~ Tide_ht)
+Aug20_TYLA %>% levene_test(pct_germ ~ Tide_ht)
+# all p values except CALY > 0.05, there is not significant difference between variances across groups. Therefore, we can assume the homogeneity of variances in the different treatment groups.
+
+############################################################################
+# Computation
+############################################################################
+
+# res.aov_CALY_Aug20 <- Aug20_CALY %>% anova_test(pct_germ ~ Tide_ht)
+# res.aov_CALY_Aug20 # p < 0.05, ges = 0.55, however data not normally distributed - should transform 
+
+res.aov_CALY_Aug20_xform <- Aug20_CALY_xform %>% anova_test(pct_germ ~ Tide_ht)
+res.aov_CALY_Aug20_xform # p = 0.003, ges = 0.638
+
+res.aov_SCTA2_Aug20 <- Aug20_SCTA2 %>% anova_test(pct_germ ~ Tide_ht)
+res.aov_SCTA2_Aug20
+
+res.aov_JUEF_Aug20 <- Aug20_JUEF %>% anova_test(pct_germ ~ Tide_ht)
+res.aov_JUEF_Aug20
+
+res.aov_TYLA_Aug20 <- Aug20_TYLA %>% anova_test(pct_germ ~ Tide_ht)
+res.aov_TYLA_Aug20
+
+
+############################################################################
+# Post-hoc tests
+############################################################################
+
+pwc_CALY_Aug20 <- Aug20_CALY %>% tukey_hsd(pct_germ ~ Tide_ht)
+pwc_CALY_Aug20
+# CALY germination rates at L, ML, M, and MH tide heights are significantly lower than those at H tide heights. 
+
+pwc_CALY_Aug20_xform <- Aug20_CALY_xform %>% tukey_hsd(pct_germ ~ Tide_ht)
+# CALY germination rates at all tide levels are significantly lower than those at H tide heights
+
+```
+
+``` {r 2021 ANOVA & TukeyHSD}
+# see https://www.datanovia.com/en/lessons/anova-in-r/#computation
+
+# filter species
+May12_CALY <- filter(MO, Species == "CALY", Date_obs == "12-May-21") 
+May12_SCTA2 <- filter(MO, Species == "SCTA2", Date_obs == "12-May-21")
+
+# Build the linear model
+lm_May12_CALY  <- lm(pct_germ ~ Tide_ht, data = May12_CALY)
+lm_May12_SCTA2 <- lm(pct_germ ~ Tide_ht, data = May12_SCTA2)
+
+# Create a QQ plot of residuals (useful bc there are several groups (Tide_ht) but few data points (n = 4) per group)
+ggqqplot(residuals(lm_May12_CALY))
+ggqqplot(residuals(lm_May12_SCTA2))
+
+# check homogeneity of variance assumption with residuals vs. fit plot
+plot(lm_May12_CALY, 1)
+plot(lm_May12_SCTA2, 1)
+
+# use the Levene’s test to check the homogeneity of variances:
+May12_CALY %>% levene_test(pct_germ ~ Tide_ht)
+May12_SCTA2 %>% levene_test(pct_germ ~ Tide_ht)
+#both p > 0.05, so we will assume homogeneity
+
+############################################################################
+# Computation
+############################################################################
+
+res.aov_CALY_May21 <- May12_CALY %>% anova_test(pct_germ ~ Tide_ht)
+res.aov_CALY_May21
+# p = 0.014, ges = .545
+
+res.aov_SCTA2_May21 <- May12_SCTA2 %>% anova_test(pct_germ ~ Tide_ht)
+res.aov_SCTA2_May21
+#p = 0.06, ges = .432; may discuss as nearly significant. 
+
+# text from DataNovia, variables altered to fit this data: "ges corresponds to the generalized eta squared (effect size). It measures the proportion of the variability in the outcome variable (here percent germination) that can be explained in terms of the predictor (here, tide height). An effect size of 0.545 (54.5%, CALY) means that 54.5% of the change in the weight can be accounted for the treatment conditions."
+
+############################################################################
+# Post-hoc tests
+############################################################################
+
+pwc_CALY_May21 <- May12_CALY %>% tukey_hsd(pct_germ ~ Tide_ht)
+pwc_CALY_May21
+
+# CALY germination at L, ML, and M tide heights are significantly different from germination at H tide height 
+
+pwc_SCTA2_May21 <- May12_SCTA2 %>% tukey_hsd(pct_germ ~ Tide_ht)
+pwc_SCTA2_May21
+# no significant difference or nearly so in germination between different tide heights
+
+```
+
+```{r differences in germination from chilling type (two-way ANOVA)}
+
+# Want to know: are there any differences in germination rates at a given elevation on a given observation date based on chilling type? Use date_obs as a proxy for chill type
+
+MO_dates <- MO %>% mutate(Date_obs=recode(Date_obs, 
+                              '12-May-21' = "May12_21", 
+                              '20-Jul-20' = "Jul20_20", 
+                              '20-Aug-20' = "Aug20_20")) 
+              
+              
+chill_SCTA2 <- filter(MO_dates, Date_obs == "May12_21" | Date_obs =="Jul20_20" | Date_obs == "Aug20_20") %>%
+  filter(Species == "SCTA2") 
+chill_CALY <- filter(MO_dates, Date_obs == "May12_21" | Date_obs =="Jul20_20" | Date_obs == "Aug20_20") %>%
+  filter(Species == "CALY") 
+chill_TYLA <- filter(MO_dates, Date_obs == "May12_21" | Date_obs =="Jul20_20" | Date_obs == "Aug20_20") %>%
+  filter(Species == "TYLA") 
+chill_JUEF <- filter(MO_dates, Date_obs == "May12_21" | Date_obs =="Jul20_20" | Date_obs == "Aug20_20") %>%
+  filter(Species == "JUEF") 
+
+# Build the linear model
+lm_chill_SCTA2  <- lm(pct_germ ~ Tide_ht*Date_obs, data = chill_SCTA2)
+lm_chill_CALY  <- lm(pct_germ ~ Tide_ht*Date_obs, data = chill_CALY)
+lm_chill_TYLA  <- lm(pct_germ ~ Tide_ht*Date_obs, data = chill_TYLA)
+lm_chill_JUEF  <- lm(pct_germ ~ Tide_ht*Date_obs, data = chill_JUEF)
+
+# Create a QQ plot of residuals 
+ggqqplot(residuals(lm_chill_SCTA2))
+ggqqplot(residuals(lm_chill_CALY))
+ggqqplot(residuals(lm_chill_TYLA))
+ggqqplot(residuals(lm_chill_JUEF))
+
+
+
+# check homogeneity of variance assumption with residuals vs. fit plot
+plot(lm_chill_SCTA2, 1)
+plot(lm_chill_CALY, 1)
+plot(lm_chill_TYLA, 1)
+plot(lm_chill_JUEF, 1)
+
+
+# use the Levene’s test to check the homogeneity of variances:
+lm_chill_SCTA2 %>% levene_test(pct_germ ~ Tide_ht*Date_obs) 
+lm_chill_CALY %>% levene_test(pct_germ ~ Tide_ht*Date_obs) # p = 0.050 
+lm_chill_TYLA %>% levene_test(pct_germ ~ Tide_ht*Date_obs) # p = 0.0206
+lm_chill_JUEF %>% levene_test(pct_germ ~ Tide_ht*Date_obs)
+
+
+# computation
+res.aov_chill_SCTA2 <- chill_SCTA2 %>% anova_test(pct_germ ~ Tide_ht*Date_obs)
+res.aov_chill_SCTA2 # all p > 0.05, no difference in germination rates by Date_obs (aka chilling type)
+
+res.aov_chill_CALY <- chill_CALY %>% anova_test(pct_germ ~ Tide_ht*Date_obs)
+res.aov_chill_CALY # only sig p is for Tide_ht, but not Date_obs or interaction
+
+res.aov_chill_TYLA <- chill_TYLA %>% anova_test(pct_germ ~ Tide_ht*Date_obs)
+res.aov_chill_TYLA # p = 0.02 for Date_obs, but not interaction with Tide_ht
+
+res.aov_chill_JUEF <- chill_JUEF %>% anova_test(pct_germ ~ Tide_ht*Date_obs)
+res.aov_chill_JUEF # all p > 0.05
+
+#post-hoc
+ 
+pwc_chill_TYLA <- chill_TYLA %>% tukey_hsd(pct_germ ~ Date_obs*Tide_ht)
+pwc_chill_TYLA # July 20, 2020 sig dif from May 12, 2021 (p.adj = 0.0146)
+
+
+```
+
+
+ANCOVA - COMPETITION
+``` {R 2021 ANCOVA - competition}
+# modified from https://www.rpubs.com/cwoods/ancova
+
+#questions: does the pct_germ of SCTA2 vary with Tide_ht under different conditions of competition at different points in the summer
+#response (dependent) variable: pct_germ (continuous)
+#explanatory (covariate) variable 1: Tide_AMSL_m (continuous)
+#explanatory (independent) variable 2: Competition (categorical)
+#test name: ANCOVA
+
+obs_comp <- filter(MO, (Date_obs == "30-Jun-21" | Date_obs == "26-Jul-21" & Species == "SCTA2"))
+
+
+#create a scatterplot with a line for each group of the categorical variable
+p_comp <- ggplot(obs_comp, (aes(x=Tide_AMSL_m, y=pct_germ, shape=Facilitation, color=Date_obs))) + theme_classic() +ylab("Germination (%)") + xlab("Tide Height above MSL (m)") 
+
+p_comp + geom_point() + geom_smooth(method=lm, se=FALSE, fullrange=TRUE)
+
+#run a 2-way anova for the data to test model assumptions
+ancova_comp <- lm(pct_germ~Tide_AMSL_m*Facilitation*Date_obs, data=obs_comp)
+
+#code to create the density plot of residuals
+plot(density(ancova_comp$residuals)) # looks fairly normal
+
+#library(stats)
+#create a Q-Q plot
+qqnorm(ancova_comp$residuals)
+qqline(ancova_comp$residuals, datax = FALSE, distribution = qnorm, probs = c(0.25, 0.75)) # residuals not (?) normally distributed
+
+#create a fitted values vs residuals plot
+plot(ancova_comp$residuals~ancova_comp$fitted.values)
+lines(lowess(ancova_comp$fitted.values,ancova_comp$residuals), col="blue")
+text(ancova_comp$fitted.values, ancova_comp$residuals, row.names(obs_comp), cex=0.6, pos=4, col="red")
+
+#interpret ANCOVA output
+anova(ancova_comp)
+
+# post-hoc testing see https://stats.stackexchange.com/questions/2469/post-hoc-tests-in-ancova
+# see response: Combining simple methods that you can easily access from R and general principles you could use Tukey's HSD simply enough. The error term from the ANCOVA will provide the error term for the confidence intervals.
+
+competition_HSD <- obs_comp %>% tukey_hsd(pct_germ ~ Facilitation)
+competition_HSD
+
+```
+
+
+TEMPERATURE
+``` {r Fig. 6}
+TempE <- read.csv("Temperature_East.csv")
+TempN <- read.csv("Temperature_North.csv")
+TempS <- read.csv("Temperature_South.csv")
+TempW<- read.csv("Temperature_West.csv")
+
+Temp_merge <- rbind(TempE, TempN, TempS, TempW) 
+
+#Set factor levels to specify display order
+################
+# Note - this will change columnn type to <fctr>
+################
+# Temp_merge$MO <- factor(Temp_merge$MO, levels = c("N", "E", "S", "W"))
+ Temp_merge$Pipe_position <- factor(Temp_merge$Pipe_position, levels = c("Upstream", "Center", "Downstream"))
+ Temp_merge$Tide_AMSL_m <- factor(Temp_merge$Tide_AMSL_m, levels = c("1.7", "1.4", "1.1", "0.8", "0.5"))
+
+# Summary stats
+# Temp_merge %>% 
+#   group_by(Tide_ht, Pipe_position) %>% 
+#   get_summary_stats(Temp_C, type = "min")
+
+#########################################
+# FIGURE 6 
+#########################################
+daily_means2 <- Temp_merge %>%
+  group_by(Tide_AMSL_m, Date)%>%
+  summarise(n = n(),
+            mean = mean(Temp_C),
+            sd = sd(Temp_C),
+            se = sd/sqrt(n))
+
+plot_means <- ggplot(data=daily_means2, 
+                   aes(x=as.Date(Date, format = "%Y-%m-%d"), 
+                       y=mean, colour = Tide_AMSL_m)) +
+  geom_smooth(size = 1.5)+ theme_classic(base_size = 10)+
+  theme(panel.spacing.y = unit(1.25, "lines")) +
+  theme(legend.position="bottom") +
+  theme(axis.text.x = element_text(margin = margin(t=5), angle = 30), axis.text.y = element_text(size = 10))+
+  labs(y="Mean daily temperature (°C)", x="Date") +
+  scale_color_manual(name = "Tide Height above MSL (m)", values = c("#6BAED6", "#2171B5", "#08306B"))
+plot_means
+ggsave("Figure_6.tiff", dpi = 300)
+###################################################
+
+```
+Figure 6. Mean daily temperatures (with 95% confidence bands) logged hourly at growing surface in marsh organ pipes across a range of tidal elevation above mean sea level, means smoothed for visual convenience. Temperature loggers at each tide height N = 12. 
+
+``` {r 2-way ANOVA of daily mean temperature}
+# http://www.datanovia.com/en/lessons/anova-in-r/#two-way-independent-anova
+
+#For ANOVA to work, the continuous variables like Tide_AMSL_m must be a factor (<fct>). 
+
+# test using daily means, not all data
+
+daily_means_position <- Temp_merge %>%
+  dplyr::group_by(Pipe_position, Tide_ht, Date) %>%
+  dplyr::mutate(Tide_ht = as.factor(Tide_ht)) %>% 
+  dplyr::summarise(n = n(),
+            Temp_C = mean(Temp_C),
+            sd = sd(Temp_C),
+            se = sd/sqrt(n))
+
+#check for extreme outliers
+Temp_outliers <- daily_means_position %>%
+  group_by(Tide_ht, Pipe_position) %>%
+  identify_outliers(Temp_C)
+# no extreme outliers
+
+
+# Build the linear model
+lm_temp  <- lm(Temp_C ~ Tide_ht*Pipe_position, data = daily_means_position)
+
+
+# Create a QQ plot of residuals 
+ggqqplot(residuals(lm_temp)) #looks ok-ish (?)
+
+# check homogeneity of variance assumption with residuals vs. fit plot
+plot(lm_temp, 1) #looks ok-ish
+
+# Levene's test of homogeneity of variance
+daily_means_position <- ungroup(daily_means_position)
+daily_means_position %>% rstatix::levene_test(Temp_C ~ Tide_ht*Pipe_position)
+# p << 0.001, variance is not equal among treatments
+
+# Computation
+
+res.aov_Temp <- daily_means_position %>% anova_test(Temp_C ~ Tide_ht*Pipe_position)
+res.aov_Temp
+#Tide height (p < 0.0001) is significant on temperature, but not pipe position or interaction of tide height with pipe position. 
+
+# analyze the simple main effects of tide height on temperature
+temp_model <- lm(Temp_C ~ Tide_ht * Pipe_position, data = daily_means_position)
+daily_means_position %>%
+  group_by(Pipe_position) %>% 
+  anova_test(Temp_C ~ Tide_ht, error = temp_model)
+# simple main effect of Tide_ht on Temp_C was significant 
+
+# follow up by multiple pairwise comparisons to determine which group means are different. Perform multiple pairwise comparisons between the different Tide_ht groups and Pipe_position 
+
+library(emmeans)
+
+pwc_temp <- daily_means_position %>% 
+  group_by(Pipe_position) %>% 
+  emmeans_test(Temp_C ~ Tide_ht, p.adjust.method = "bonferroni")
+pwc_temp
+# significant differences only between High to Low elevations at center (p = 0.003), downstream (p < 0.001), and upstream (p = 0.007)
+
+```
+
+
+EXTRA
+
+Additional data/figures generated but not included in manuscript are included for reference or later analysis. Content in this chunk requires running the preceding chunks to define objects. 
+```{r addtional summary plots, not in manuscript}
+
+################################################################################################
+# hourly temp data
+################################################################################################
+# see https://rpubs.com/cgb-grupstra/moorea-hobo-20190314
+
+ntempgraph <- ggplot(data=Temp_merge, 
+    aes(x=as.Date(Date, format = "%Y-%m-%d"), 
+    y=Temp_C, colour=Tide_AMSL_m)) +
+    geom_point(size=1, alpha = 1/10)+ theme_bw()+
+    facet_grid(fct_relevel(Tide_AMSL_m, "1.7", "1.1", "0.5")~Pipe_position)+ 
+    theme(axis.text.x = element_text(angle=45, margin = margin(t=20, r=100)))+
+    labs(title="Hourly temperature data", y="Temperature (°C)", x="Date") +
+    scale_color_discrete(name = "Tide Height above MSL (m)")
+ntempgraph
+
+################################################################################################
+# scatter plot of daily means by pipe position 
+################################################################################################
+
+daily_means %>% 
+  group_by(Tide_AMSL_m, Pipe_position) %>% 
+  get_summary_stats(mean, type = "mean_sd")
+
+pd <- position_dodge(0.15)
+
+daily_means %>%
+ ggplot(aes(x = Date, 
+            y = mean, 
+            color = Tide_AMSL_m)) +
+ geom_point(position = pd, 
+             size = 5) +
+  geom_errorbar(aes(ymin = mean - se, 
+                    ymax = mean + se),
+                width = .1, 
+                position = pd) +
+          theme_classic() +
+          theme(text = element_text(size = 15)) +
+          theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+          labs(x = "Date", 
+               y = "Mean daily temperature (°C)") +
+    scale_x_date(date_breaks = "7 days", date_labels = "%m-%d") +
+    scale_color_manual(name = "Height above MSL (m)", values = c("#08306B", "#2171B5", "#6BAED6"))
+
+################################################################################################
+# boxplots of daily means by tide elevation and pipe position 
+################################################################################################
+# Method 1: http://www.sthda.com/english/wiki/ggplot2-facet-split-a-plot-into-a-matrix-of-panels
+
+temp_box <- ggplot(daily_means, 
+       aes (x = Tide_AMSL_m, 
+            y = mean, 
+            group = Tide_AMSL_m)) +
+  geom_boxplot()+
+  theme_classic() +
+  theme(text = element_text(size = 15)) +
+  theme(legend.position = "none") +
+  labs(x = "Approx. Elevation Above Mean Seal Level (AMSL)", 
+       y = "Daily Mean Temperatures (°C)")
+# 
+# temp_box + scale_fill_manual(values=c("#08306B", "#2171B5", "#6BAED6"), 
+#                        name="Height AMSL (m)")
+
+#Method 2: https://rpkgs.datanovia.com/ggpubr/reference/ggboxplot.html
+temp_boxplot <- ggboxplot(
+  daily_means, x = "Tide_AMSL_m", y = "mean", 
+  color = "Tide_AMSL_m", palette = c("#08306B", "#2171B5", "#6BAED6"),
+  xlab = "Tide Height AMSL (m)",
+  ylab = "Mean daily temperature (°C)",
+  #title = "Mean daily temperatures within marsh organ"
+  )
+temp_boxplot
+
+################################################
+# daily temperature range
+################################################
+
+fullrange <- Temp_merge %>%
+  group_by(Tide_AMSL_m, Date)%>%
+  summarise(min_temp = min(Temp_C), max_temp = max(Temp_C))%>%
+  mutate(range = max_temp-min_temp)
+
+plot_range <- ggplot(data=fullrange, 
+                   aes(x=as.Date(Date, format = "%Y-%m-%d"), 
+                       y=range, colour = Tide_AMSL_m)) +
+  geom_smooth(size = 1.5)+ theme_classic(base_size = 14)+
+  #facet_grid(fct_relevel(Tide_AMSL_m, "1.7", "1.1", "0.5"))+ 
+  theme(panel.spacing.y = unit(1.25, "lines")) +
+  theme(axis.text.x = element_text(margin = margin(t=5), angle = 30), axis.text.y = element_text(size = 14))+
+  labs(y="Range of daily mean temperatures (°C)", x="Date") +
+  scale_color_manual(name = "Tide Height AMSL (m)", values = c("#08306B", "#2171B5", "#6BAED6"))
+plot_range
+
+```
+
+```{r GC water office tide data}
+
+install.packages("stringr")
+library(stringr)
+
+# filter data between Apr. 1 and Aug. 31 (growing season)
+Steveston <- read.csv("2018_Steveston_GC_wateroffice.csv") %>% 
+  mutate(Metres = as.numeric(Metres)) %>% 
+  filter(Julian_Day >= 91, Julian_Day <= 304) 
+
+tides <- 
+
+
+MHW <- na.omit(Steveston) %>% 
+  filter(Maxima == "H" | Maxima == "HH")
+mean(MHW$Metres)
+# MHW = 3.41 m AMLL
+
+MHHW <- na.omit(Steveston) %>% 
+  filter(Maxima == "HH")
+mean(MHHW$Metres)
+# MHHW = 3.69 m AMLL
+
+max(MHHW$Metres)
+# max high water = 4 m AMLL
+  
+
+tides <- na.omit(Steveston) %>% 
+   group_by(Julian_Day) 
+
+tide_graph <- ggplot(data=Steveston, 
+    aes(x=Julian_Day, y=Metres)) +
+    geom_point(size=1)+ theme_bw()+
+    labs(title="Steveston Jetty tide data Apr. 1 - Aug. 31, 2018", y="Tide Height AMLL (m)", x="Julian Day")
+tide_graph
+
+```
+
+```{r LMM of elevation & pct_germ}
+
+# all code adapted from https://ourcodingclub.github.io/tutorials/mixed-models/
+# not sure this really shows anything useful
+
+library(Matrix)
+library(lme4)
+
+sp_germ <- filter(MO, !(Species == "CTRL"))
+germ_obs <- filter(sp_germ, (Date_obs == "20-Jul-20" | Date_obs == "20-Aug-20" | Date_obs == "12-May-21"))
+
+
+
+basic_lm_mo <- lm(pct_germ ~ Tide_AMSL_m, data = germ_obs)
+
+summary(basic_lm_mo)
+
+library(ggplot2)
+
+ggplot(germ_obs, aes(x = Tide_AMSL_m, y = pct_germ)) +
+  geom_point()+
+  geom_smooth(method = "lm")
+
+### Assumptions?
+
+## Plot the residuals - the red line should be close to being flat, like the dashed grey line
+
+plot(basic_lm_mo, which = 1)  # not perfect, but look alright
+
+## Have a quick look at the  qqplot too - point should ideally fall onto the diagonal dashed line
+
+plot(basic_lm_mo, which = 2)  # a bit off at the extremes, but that's often the case; again doesn't look too bad
+
+## However, what about observation independence? Are our data independent?
+## We collected multiple samples from different species 
+## It's perfectly plausible that the data from within each species are more similar to each other than the data from different species - they are correlated. Pseudoreplication isn't our friend.
+
+## Have a look at the data to see if above is true
+boxplot(pct_germ ~ Species, data = germ_obs)
+
+ggplot(MO, aes(x = Tide_AMSL_m, y = pct_germ, colour = Species))+
+  geom_point(size = 2)+
+  theme_classic()+
+    theme(legend.position = "none")
+
+## We could run many separate analyses and fit a regression for each of the Species.
+
+## We use the facet_wrap to do that
+
+ggplot(aes(Tide_AMSL_m, pct_germ), data = germ_obs) + geom_point() +
+    facet_wrap(~ Species) +
+    xlab("Tide Height AMSL") + ylab("Germination (%)")
+
+##----- Modify the model -----###
+
+## We want to use all the data, but account for the data coming from different Species
+
+## let's add Species as a fixed effect to our basic.lm
+species_lm <- lm(pct_germ ~ Tide_AMSL_m + Species, data = germ_obs)
+summary(species_lm)
+
+
+###----- Mixed effects models -----###
+
+##----- First mixed model -----##
+
+### fixed effects = Tide_AMSL_m
+
+### random effects = Date_obs, 
+
+### summary
+
+### variance accounted for by Species
+
+
+head(germ_obs)  # we have Date_obs and Species
+str(germ_obs)  # we took samples from three dates per Species and six Species in total (incl. ctrl)
+
+mixed_lmer <- lmer(pct_germ ~ Tide_AMSL_m + (1|Species), data = germ_obs)
+summary(mixed_lmer)
+
+#We can see the variance for Species = 26.15 Species is not very important: does not explain a lot of variation. How do we know that? We can take the variance for the Species and divide it by the total variance:
+26.15/(26.15+166.07) # ~13.6 % 
+
+#check assumptions
+plot(mixed_lmer) # pattern seems evident
+
+qqnorm(resid(mixed_lmer)) # not looking great
+qqline(resid(mixed_lmer)) # points mostly fit line, but tail takes off
+
+mixed_lmer2 <- lmer(pct_germ ~ Tide_AMSL_m + (1|Species) + (1|Date_obs), data = germ_obs)  # the syntax stays the same, but now the nesting is taken into account
+summary(mixed_lmer2)
+
+# plot for visibility
+(mm_plot <- ggplot(germ_obs, aes(x = Tide_AMSL_m, y = pct_germ)) + # tutorial included color = for site; not helpful for this use
+      facet_wrap(~Species, nrow=2) +   # a panel for each Species
+      geom_point(alpha = 0.5) +
+      theme_classic() +
+      geom_line(data = cbind(germ_obs, pred = predict(mixed_lmer2)), aes(y = pred), size = 1) +  # adding predicted line from mixed model 
+      theme(legend.position = "none",
+            panel.spacing = unit(2, "lines"))  # adding space between panels
+)
+
+
+# fit a random-slope and random-intercept model
+mixed_ranslope <- lmer(pct_germ ~ Tide_AMSL_m + (1 + Tide_AMSL_m|Species/Date_obs), data = germ_obs) 
+
+summary(mixed_ranslope)
+
+### plot
+(mm_plot <- ggplot(germ_obs, aes(x = Tide_AMSL_m, y = pct_germ)) +
+      facet_wrap(~Species, nrow=2) +   # a panel for each Species
+      geom_point(alpha = 0.5) +
+      theme_classic() +
+      geom_line(data = cbind(germ_obs, pred = predict(mixed_ranslope)), aes(y = pred), size = 1) +  # adding predicted line from mixed model 
+      theme(legend.position = "none",
+            panel.spacing = unit(2, "lines"))  # adding space between panels
+)
+
+# visualise your model as a regression line with some error around it
+#install.packages("ggeffects")
+library(ggeffects)  # install the package first if you haven't already, then load it
+
+# Extract the prediction data frame
+pred.mm <- ggpredict(mixed_lmer2, terms = c("Tide_AMSL_m"))  # this gives overall predictions for the model
+
+# Plot the predictions 
+
+(ggplot(pred.mm) + 
+   geom_line(aes(x = x, y = predicted)) +          # slope
+   geom_ribbon(aes(x = x, ymin = predicted - std.error, ymax = predicted + std.error), 
+               fill = "lightgrey", alpha = 0.5) +  # error band
+   geom_point(data = germ_obs,                      # adding the raw data (scaled values)
+              aes(x = Tide_AMSL_m, y = pct_germ, colour = Species)) + 
+   labs(x = "Tide Height (m AMSL) (indexed)", y = "Germination (%)", 
+        title = "Germination rates of 5 species at 5 Tide Heights") + 
+   theme_minimal()
+)
+
+
+ggpredict(mixed_lmer2, terms = c("Tide_AMSL_m", "Species"), type = "re") %>% 
+   plot() +
+   labs(x = "Tide Height (m AMSL)", y = "Germination (%)", title = "Predicted values of germination across elevation") + 
+   theme_classic()
+
+
+
+
+```
+
+
+
+
