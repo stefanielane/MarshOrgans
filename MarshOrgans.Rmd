@@ -14,6 +14,7 @@ library(rstatix) # provides pipe-friendly R functions for easy statistical analy
 MO <- read.csv("Germination_2020-2021.csv")
 
 MO$Tide_ht <- factor(MO$Tide_ht, levels = c("L", "ML", "M", "MH", "H"))
+MO$Tide_AMSL_m <- factor(MO$Tide_AMSL_m, levels = c("0.5", "0.8", "1.1", "1.4", "1.7"))
 
 ```
 
@@ -36,7 +37,7 @@ sd = sd(pct_germ, na.rm = TRUE)
 
 
 MOmeans_all_obs <- obs_germ_all_sp %>% 
-  mutate(Species = recode(Species, "CALY" = "Lyngbye's Sedge", "SCTA2" = "Bulrush", "TYLA" = "Cattail", "JUEF" = "Common Rush")) %>% 
+  mutate(Species = recode(Species, "CALY" = "Carex lyngbyei", "SCTA2" = "Schoenoplectus tabernaemontani", "TYLA" = "Typha latifolia", "JUEF" = "Juncus effusus")) %>% 
   group_by(Date_obs, Species, Tide_AMSL_m) %>% 
   summarize(n = n(),
             mean = mean(pct_germ), 
@@ -63,22 +64,18 @@ ggplot(MOmeans_all_obs,
         facet_grid(. ~ Tide_AMSL_m) +
           theme_classic() +
           theme(panel.spacing.y = unit(3, "lines"), panel.spacing.x = unit(3, "lines")) +
-          theme(text = element_text(size = 10)) +
+          theme(text = element_text(size = 10), strip.text = element_text(face = "italic")) +
            facet_wrap(~ Species, nrow = 2, scales ="free") +
-          labs(x = "Approx. elevation above mean sea level (MSL)", 
-               y = "Percent Germination", 
-                color = "Observation Date",
-                shape = "Observation Date") +
-               #title = "Summer 2020: germination rates of 
-               #four plant species at five elevations AMSL", 
-               #subtitle = "(Means and standard errors)") +
-  #scale_shape_discrete(name = "Observation Date", limits = c("20-Jul-2020", "20-Aug-2020")) +
-          scale_color_manual(values = c("#74C476" , "#238B45", "#00441B"))
-ggsave("Figure_4.tiff", dpi = 300)
+          labs(x = "Approx. elevation AMSL", 
+               y = "Percent germination", 
+                color = "Observation date",
+                shape = "Observation date") +
+                        scale_color_manual(values = c("#74C476" , "#238B45", "#00441B"))
+#ggsave("Figure_4.tiff", dpi = 600)
 
 
 ```
-Figure 4. Germination rates of four plant species at five approximate elevations above MSL following artificial chilling (July and August, 2020) and natural chilling (May, 2021). The same individuals from 20 seeds planted in June 2020 were counted in July and August, 2020. Newly planted seeds in the fall of 2020 were observed in May 2021. Points are means ±S.E.; note y-axis showing percent germination is rescaled for each species. Species observed are Bulrush (Schoenoplectus tabernaemontani), Cattail (Typha latifolia), Common Rush (Juncus effusus), and Lyngbye’s Sedge (Carex lyngbyei). N = 4
+Figure 4.  Germination rates of four plant species at five approximate elevations AMSL following artificial chilling (July and August 2020) and natural chilling (May 2021). The same individuals from 20 seeds planted in June 2020 were counted in July and August 2020. Newly planted seeds in the fall of 2020 were observed in May 2021. Points are means ±SE (N = 4); note the y-axis showing percent germination is rescaled for each species. Species observed are Schoenoplectus tabernaemontani (bulrush), Typha latifolia (cattail), Juncus effusus (common rush), and Carex lyngbyei (Lyngbye’s sedge). 
 
 
 ``` {r Fig. 5}
@@ -126,15 +123,15 @@ ggplot(facil_means,
           theme_classic() +
           theme(text = element_text(size = 10)) +
           theme(panel.spacing.x=unit(1.5, "lines")) +
-          labs(x = "Approx. elevation above mean sea level (MSL)", 
-               y = "Percent Germination", 
-               color = "Observation Date",
-                shape = "Observation Date") +
+          labs(x = "Approx. elevation AMSL", 
+               y = "Percent germination", 
+               color = "Observation date",
+                shape = "Observation date") +
   scale_color_brewer(palette = "Paired")
-ggsave("Figure_5.tiff", dpi = 300)
+ggsave("Figure_5.tiff", dpi = 600)
 
 ```
-Figure 5. Germination rates of bulrush at five approximate elevations above MSL under three different competitive pressures. Seeds exposed to 8-week artificial chilling were planted in mid-May 2021 and the same individuals were observed late June and late July 2021. Points are means ±S.E., N = 4.
+Figure 5. Germination rates of Schoenoplectus tabernaemontani (bulrush) at five approximate elevations AMSL under three different competitive pressures. Seeds exposed to 8-week artificial chilling were planted in mid-May 2021, and the same individuals were observed in late June and late July 2021. Points are means ±SE, N = 4.
 
 
 ANOVA - GERMINATION 
@@ -350,10 +347,10 @@ res.aov_TYLA_Aug20
 
 pwc_CALY_Aug20 <- Aug20_CALY %>% tukey_hsd(pct_germ ~ Tide_ht)
 pwc_CALY_Aug20
-# CALY germination rates at L, ML, M, and MH tide heights are significantly lower than those at H tide heights. 
+# CALY germination rates at L, ML, M, and MH tide heights are significantly lower than those at highest (1.7 m) tide heights. 
 
 pwc_CALY_Aug20_xform <- Aug20_CALY_xform %>% tukey_hsd(pct_germ ~ Tide_ht)
-# CALY germination rates at all tide levels are significantly lower than those at H tide heights
+# CALY germination rates at all tide levels are significantly lower than those at highest (1.7 m) tide heights
 
 ```
 
@@ -524,8 +521,8 @@ competition_HSD
 
 ```
 
-
 TEMPERATURE
+
 ``` {r Fig. 6}
 TempE <- read.csv("Temperature_East.csv")
 TempN <- read.csv("Temperature_North.csv")
@@ -565,9 +562,9 @@ plot_means <- ggplot(data=daily_means2,
   theme(legend.position="bottom") +
   theme(axis.text.x = element_text(margin = margin(t=5), angle = 30), axis.text.y = element_text(size = 10))+
   labs(y="Mean daily temperature (°C)", x="Date") +
-  scale_color_manual(name = "Tide Height above MSL (m)", values = c("#6BAED6", "#2171B5", "#08306B"))
+  scale_color_manual(name = "Tide height AMSL (m)", values = c("#6BAED6", "#2171B5", "#08306B"))
 plot_means
-ggsave("Figure_6.tiff", dpi = 300)
+ggsave("Figure_6.tiff", dpi = 600)
 ###################################################
 
 ```
