@@ -10,7 +10,7 @@ Maintained by Stefanie L. Lane
 
 |  Name | Description | 
 | :---: | :--- |
-|  2018_Steveston_GC_wateroffice.csv |Tide levels recorded from Environment Canada Hydrometric Station 08MH028, used to determine local tides above mean lower low water level | 
+|  2018_Steveston_GC_wateroffice.csv |Tide levels recorded from Environment Canada Hydrometric Station 08MH028, used to determine local tides at marsh organ sites above mean lower low water level | 
 |  Germination_2020-2021.csv | All germination data | 
 |  Germination_2020-2021_metadata.csv | metadata for germination data | 
 | MarshOrgans.Rmd | Code used to produce analyses and figures reported in publication |
